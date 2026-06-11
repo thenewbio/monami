@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:monami/src/presentation/views/order/order_view.dart';
 import 'package:monami/src/presentation/views/payment/payment_view.dart';
 import 'package:monami/src/utils/router/route_name.dart';
 import 'package:monami/src/presentation/views/bottomnavigation/bottom_navigation_screen.dart';
@@ -62,12 +63,13 @@ class RouteGenerator {
       // Payment routes
       case Routes.paymentRoute:
         return _getPageRoute(_buildPaymentView(settings.arguments));
-      // case Routes.paypalPaymentRoute:
-      //   return _getPageRoute(_buildPayPalPaymentView(settings.arguments));
-
       // Notification routes
       case Routes.notificationsRoute:
         return _getPageRoute(const NotificationsView());
+
+      //order routes
+      case Routes.orderTrackingRoute:
+        return _getPageRoute(_buildOrderTrackingView(settings.arguments));
 
       default:
         return _getPageRoute(_errorPage());
@@ -103,6 +105,14 @@ class RouteGenerator {
           ),
         ),
       );
+
+  // New Helper for Order Tracking
+  static Widget _buildOrderTrackingView(dynamic arguments) {
+    if (arguments is Orders) {
+      return OrderTrackingView(order: arguments);
+    }
+    return _errorPage(message: 'Invalid Order data for tracking');
+  }
 
   // Helper methods for views that require arguments
   static Widget _buildProductDetailView(dynamic arguments) {

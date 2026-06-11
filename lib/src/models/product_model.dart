@@ -166,6 +166,8 @@ class CartItem {
   double get totalPrice => price * quantity;
 }
 
+// lib/src/models/product_model.dart
+
 class Orders {
   final String id;
   final List<CartItem> items;
@@ -173,7 +175,8 @@ class Orders {
   final double shipping;
   final double tax;
   final double total;
-  final String status;
+  final String status; // 'pending', 'processing', 'shipped', 'delivered'
+  final String? trackingId; // New field added
   final DateTime createdAt;
   final Map<String, dynamic> shippingAddress;
   final String paymentMethod;
@@ -188,6 +191,7 @@ class Orders {
     required this.tax,
     required this.total,
     required this.status,
+    this.trackingId, // Optional tracking ID
     required this.createdAt,
     required this.shippingAddress,
     required this.paymentMethod,
@@ -204,6 +208,7 @@ class Orders {
       'tax': tax,
       'total': total,
       'status': status,
+      'trackingId': trackingId,
       'createdAt': createdAt.toIso8601String(),
       'shippingAddress': shippingAddress,
       'paymentMethod': paymentMethod,
@@ -223,12 +228,13 @@ class Orders {
       tax: (json['tax'] as num).toDouble(),
       total: (json['total'] as num).toDouble(),
       status: json['status'],
+      trackingId: json['trackingId'],
       createdAt: DateTime.parse(json['createdAt']),
       shippingAddress: json['shippingAddress'],
       paymentMethod: json['paymentMethod'],
       paymentId: json['paymentId'],
-      completedAt: json['completedAt'] != null 
-          ? DateTime.parse(json['completedAt']) 
+      completedAt: json['completedAt'] != null
+          ? DateTime.parse(json['completedAt'])
           : null,
     );
   }
@@ -242,6 +248,7 @@ class Orders {
     double? tax,
     double? total,
     String? status,
+    String? trackingId,
     DateTime? createdAt,
     Map<String, dynamic>? shippingAddress,
     String? paymentMethod,
@@ -256,6 +263,7 @@ class Orders {
       tax: tax ?? this.tax,
       total: total ?? this.total,
       status: status ?? this.status,
+      trackingId: trackingId ?? this.trackingId,
       createdAt: createdAt ?? this.createdAt,
       shippingAddress: shippingAddress ?? this.shippingAddress,
       paymentMethod: paymentMethod ?? this.paymentMethod,

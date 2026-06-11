@@ -13,14 +13,15 @@ class PaystackPlusService {
     required String email,
   }) async {
     try {
-      final reference = "DEV_${DateTime.now().millisecondsSinceEpoch}";
+      final reference = "MONAMI${DateTime.now().millisecondsSinceEpoch}";
+      final koboAmount = (amount * 100).toInt().toString();
 
       await FlutterPaystackPlus.openPaystackPopup(
         publicKey: publicKey,
         secretKey: secretKey, // Remove later for production
         context: context,
         customerEmail: email,
-        amount: "500", // Kobo
+        amount: koboAmount,
         currency: "NGN",
         reference: reference,
         callBackUrl: "https://monami.com",

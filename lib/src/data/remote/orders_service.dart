@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:monami/src/data/state/constants/firebase_collection.dart';
 import 'package:monami/src/models/product_model.dart';
 import 'package:monami/src/services/storage_service.dart';
@@ -11,6 +12,47 @@ import 'package:monami/src/data/remote/product_service.dart';
 class OrdersService {
   final _logger = Logger(OrdersService);
   final _firestore = FirebaseFirestore.instance;
+// Replace with your actual Gemini API Key
+  static const _apiKey = 'YOUR_GEMINI_API_KEY';
+
+  /// New: AI-Powered Shipping Assistant using Gemini
+  Future<String> getAIShippingEstimate(Orders order) async {
+    try {
+      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
+
+      final itemsList = order.items.map((e) => e.productName).join(', ');
+      final city = order.shippingAddress['city'] ?? 'your location';
+
+      final prompt = """
+      Act as a friendly logistics assistant for Monami Ecommerce. 
+      The customer has ordered: $itemsList. 
+      The delivery city is: $city. 
+      The current status is: ${order.status}.
+      Provide a concise 2-sentence update on when they might receive it and a 
+      fun fact about one of the items.
+      """;
+
+      final content = [Content.text(prompt)];
+      final response = await model.generateContent(content);
+
+      return response.text ??
+          "We're processing your order and will update you soon!";
+    } catch (e) {
+      return "AI Assistant: We're experiencing high traffic, but your order is safe in our system!";
+    }
+  }
+
+  /// New: Mark as Shipped with Tracking ID
+  Future<void> shipOrder(String orderId, String trackingId) async {
+    await _firestore
+        .collection(FirebaseCollectionName.orders)
+        .doc(orderId)
+        .update({
+      'status': 'shipped',
+      'trackingId': trackingId,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+  }
 
   /// Create a new order (both Firebase and local storage)
   Future<Orders> createOrder(Orders order) async {
@@ -31,7 +73,8 @@ class OrdersService {
       await _sendPurchaseNotifications(order, currentUser.uid);
 
       _logger.log('Order created successfully: ${order.id}');
-      print('DEBUG: Purchase notification trigger called for order: ${order.id}');
+      print(
+          'DEBUG: Purchase notification trigger called for order: ${order.id}');
       return order;
     } catch (e) {
       _logger.log('Error creating order: $e');
@@ -199,6 +242,21 @@ class OrdersService {
       _logger.log('Error updating order status: $e');
       throw Exception('Failed to update order status: $e');
     }
+  }
+
+  /// New: Get AI-generated shipping update based on current order state
+  Future<String> getAIShippingAssistance(Orders order) async {
+    // This uses a placeholder for your AI API call (e.g., Gemini or OpenAI)
+    // You would pass the order items and status to get a human-like summary
+    final items = order.items.map((e) => e.productName).join(', ');
+    final prompt =
+        "Update the customer on order #${order.id}. Items: $items. Status: ${order.status}. Address: ${order.shippingAddress['city']}.";
+
+    // Logic: Return a friendly message based on order status
+    if (order.status == 'shipped') {
+      return "Your order ($items) is currently on the move! It's headed to ${order.shippingAddress['city']} and usually takes 2-3 business days.";
+    }
+    return "We are still preparing your items ($items). Our team is working to get it to the courier as soon as possible!";
   }
 
   /// Update entire order
@@ -400,47 +458,48 @@ class OrdersService {
           .collection(FirebaseCollectionName.users)
           .doc(buyerId)
           .get();
-      
+
       if (!buyerDoc.exists) return;
-      
+
       final buyerData = buyerDoc.data()!;
-      final buyerName = buyerData['displayName'] ?? buyerData['email'] ?? 'Someone';
-      
+      final buyerName =
+          buyerData['displayName'] ?? buyerData['email'] ?? 'Someone';
+
       // Get product details and send notifications
       final productService = ProductService();
       final products = await productService.getProductsFromFirebase();
       final notificationService = NotificationService();
-      
+
       // Group items by product owner
       final Map<String, List<CartItem>> ownerItems = {};
-      
+
       for (final item in order.items) {
         final product = products.firstWhere((p) => p.id == item.productId);
         final ownerId = product.createdBy;
-        
+
         if (!ownerItems.containsKey(ownerId)) {
           ownerItems[ownerId] = [];
         }
         ownerItems[ownerId]!.add(item);
       }
-      
+
       // Send notification for each product owner
       for (final entry in ownerItems.entries) {
         final ownerId = entry.key;
         final items = entry.value;
-        
+
         // Calculate total for this owner
         double totalAmount = 0;
         int totalQuantity = 0;
         String productNames = '';
-        
+
         for (final item in items) {
           totalAmount += item.price * item.quantity;
           totalQuantity += item.quantity;
           if (productNames.isNotEmpty) productNames += ', ';
           productNames += item.productName;
         }
-        
+
         // Send notification
         await notificationService.sendPurchaseNotification(
           productId: items.first.productId,
@@ -451,7 +510,7 @@ class OrdersService {
           totalAmount: totalAmount,
         );
       }
-      
+
       _logger.log('Purchase notifications sent for order: ${order.id}');
     } catch (e) {
       _logger.log('Error sending purchase notifications: $e');
@@ -459,4 +518,3 @@ class OrdersService {
     }
   }
 }
-
